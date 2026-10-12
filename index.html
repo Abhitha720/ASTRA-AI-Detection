@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASTRA | AI Farm Security</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#08111f;color:#edf5ff;font-family:Arial,sans-serif}
+header{padding:22px 7%;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #253449}
+.logo{font-size:27px;font-weight:bold;color:#55e6a5;letter-spacing:3px}
+.status{color:#55e6a5;font-size:13px}
+main{max-width:1100px;margin:auto;padding:30px 20px}
+h1{font-size:36px;margin-bottom:8px}
+.sub{color:#9aacc5;line-height:1.6}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:15px;margin:25px 0}
+.card,.panel{background:#111e30;border:1px solid #293c55;border-radius:14px;padding:20px}
+.label{color:#9aacc5;font-size:13px}
+.value{font-size:24px;font-weight:bold;margin-top:12px}
+.green{color:#55e6a5}
+.yellow{color:#ffd166}
+.layout{display:grid;grid-template-columns:1.2fr 1fr;gap:18px}
+video{width:100%;background:#02060c;border-radius:10px;max-height:330px}
+button{border:0;border-radius:8px;padding:12px 16px;margin:8px 5px 8px 0;font-weight:bold;cursor:pointer}
+.primary{background:#55e6a5;color:#07131a}
+.secondary{background:#24364d;color:white}
+#result{padding:14px;background:#0b1727;border-radius:8px;line-height:1.7;margin-top:12px}
+li{margin:13px 0;color:#cfdded}
+footer{text-align:center;padding:25px;color:#8395ad;font-size:12px}
+@media(max-width:700px){.layout{grid-template-columns:1fr}h1{font-size:29px}}
+</style>
+</head>
+<body>
+<header>
+<div class="logo">ASTRA</div>
+<div class="status">● SECURITY SYSTEM ONLINE</div>
+</header>
+<main>
+<h1>AI Farm Security Dashboard</h1>
+<p class="sub">Autonomous intrusion monitoring and wildlife-friendly farm protection.</p>
+
+<section class="cards">
+<div class="card"><div class="label">SYSTEM STATUS</div><div class="value green" id="system">READY</div></div>
+<div class="card"><div class="label">CAMERA STATUS</div><div class="value" id="camStatus">NOT CONNECTED</div></div>
+<div class="card"><div class="label">DETECTIONS</div><div class="value" id="count">0</div></div>
+<div class="card"><div class="label">ACTIVE ZONE</div><div class="value">ZONE A1</div></div>
+</section>
+
+<div class="layout">
+<section class="panel">
+<h2>Live Camera Feed</h2>
+<p class="sub">Allow camera access to view your surroundings.</p>
+<video id="camera" autoplay playsinline muted></video>
+<button class="primary" onclick="startCamera()">Start Camera</button>
+<button class="secondary" onclick="stopCamera()">Stop Camera</button>
+<div id="camMessage" class="sub">Camera has not started.</div>
+</section>
+
+<section class="panel">
+<h2>Intrusion Detection</h2>
+<p class="sub">This starter version displays camera video but does not yet classify people or animals.</p>
+<div id="result">Waiting for a detection model.</div>
+<button class="primary" onclick="demoDetection()">Run Sample Alert</button>
+<button class="secondary" onclick="resetDetection()">Reset</button>
+<h3>Recent Events</h3>
+<ul id="events"><li>No events recorded.</li></ul>
+</section>
+</div>
+
+<section class="panel" style="margin-top:18px">
+<h2>ASTRA Protection Network</h2>
+<p class="sub">1. Camera captures a scene → 2. AI model identifies a person or animal → 3. Zone alert is generated → 4. Farmer receives a notification.</p>
+<p class="yellow">Prototype status: camera preview available; AI detection and real mobile alerts require further integration.</p>
+</section>
+</main>
+<footer>ASTRA • Intelligent Farm Protection • Prototype Dashboard</footer>
+
+<script>
+let stream=null, detections=0;
+async function startCamera(){
+  const message=document.getElementById('camMessage');
+  if(!navigator.mediaDevices?.getUserMedia){
+    message.textContent='Camera access needs HTTPS or localhost in a supported browser.';
+    return;
+  }
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+    document.getElementById('camera').srcObject=stream;
+    document.getElementById('camStatus').textContent='CONNECTED';
+    document.getElementById('system').textContent='CAMERA READY';
+    message.textContent='Camera connected. AI classification is not enabled yet.';
+  }catch(e){
+    message.textContent='Camera unavailable or permission denied. Allow camera access and try again.';
+  }
+}
+function stopCamera(){
+  if(stream)stream.getTracks().forEach(track=>track.stop());
+  stream=null;
+  document.getElementById('camera').srcObject=null;
+  document.getElementById('camStatus').textContent='NOT CONNECTED';
+  document.getElementById('camMessage').textContent='Camera stopped.';
+}
+function demoDetection(){
+  detections++;
+  document.getElementById('count').textContent=detections;
+  document.getElementById('result').innerHTML=
+    '<span class="yellow">SAMPLE EVENT — NOT A REAL AI DETECTION</span><br>Example category: Person<br>Zone: A1<br>Status: Review required';
+  const list=document.getElementById('events');
+  if(detections===1)list.innerHTML='';
+  const item=document.createElement('li');
+  item.textContent=new Date().toLocaleTimeString()+' — Sample event in Zone A1';
+  list.prepend(item);
+}
+function resetDetection(){
+  detections=0;
+  document.getElementById('count').textContent='0';
+  document.getElementById('result').textContent='Waiting for a detection model.';
+  document.getElementById('events').innerHTML='<li>No events recorded.</li>';
+}
+</script>
+</body>
+</html>
