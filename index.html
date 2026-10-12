@@ -1,122 +1,163 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ASTRA | AI Farm Security</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ASTRA AI | Farm Security</title>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#08111f;color:#edf5ff;font-family:Arial,sans-serif}
-header{padding:22px 7%;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #253449}
-.logo{font-size:27px;font-weight:bold;color:#55e6a5;letter-spacing:3px}
-.status{color:#55e6a5;font-size:13px}
-main{max-width:1100px;margin:auto;padding:30px 20px}
-h1{font-size:36px;margin-bottom:8px}
-.sub{color:#9aacc5;line-height:1.6}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:15px;margin:25px 0}
-.card,.panel{background:#111e30;border:1px solid #293c55;border-radius:14px;padding:20px}
-.label{color:#9aacc5;font-size:13px}
-.value{font-size:24px;font-weight:bold;margin-top:12px}
-.green{color:#55e6a5}
-.yellow{color:#ffd166}
-.layout{display:grid;grid-template-columns:1.2fr 1fr;gap:18px}
-video{width:100%;background:#02060c;border-radius:10px;max-height:330px}
-button{border:0;border-radius:8px;padding:12px 16px;margin:8px 5px 8px 0;font-weight:bold;cursor:pointer}
-.primary{background:#55e6a5;color:#07131a}
-.secondary{background:#24364d;color:white}
-#result{padding:14px;background:#0b1727;border-radius:8px;line-height:1.7;margin-top:12px}
-li{margin:13px 0;color:#cfdded}
-footer{text-align:center;padding:25px;color:#8395ad;font-size:12px}
-@media(max-width:700px){.layout{grid-template-columns:1fr}h1{font-size:29px}}
+body{margin:0;background:#08151b;color:#edf8f2;font-family:Arial,sans-serif}
+header{padding:22px 6%;background:#102a27;border-bottom:1px solid #31554b;display:flex;justify-content:space-between;align-items:center}
+.logo{font-size:28px;letter-spacing:4px;font-weight:bold;color:#65edb1}
+main{max-width:1100px;margin:auto;padding:30px 18px}
+h1{font-size:34px;margin-bottom:8px}
+p{color:#a8c0b5;line-height:1.6}
+.grid{display:grid;grid-template-columns:1.2fr .8fr;gap:20px;margin-top:25px}
+.panel{background:#102329;border:1px solid #29473f;border-radius:16px;padding:22px;min-width:0}
+button,.upload{display:inline-block;padding:12px 17px;border:0;border-radius:8px;background:#65edb1;color:#09231a;font-weight:bold;cursor:pointer;margin:6px 5px 6px 0}
+.secondary{background:#29423d;color:white}
+#preview{position:relative;display:none;margin-top:15px;background:#000;border-radius:10px;overflow:hidden}
+#photo{display:block;width:100%;height:auto}
+#boxes{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.status{padding:14px;border-radius:9px;background:#1b3436;margin-top:15px;line-height:1.6}
+.stat{padding:15px;border:1px solid #29473f;border-radius:10px;margin:10px 0}
+.stat small{color:#a8c0b5}
+.stat strong{display:block;font-size:25px;margin-top:8px}
+li{margin:12px 0}
+.note{font-size:13px;color:#f5d997;line-height:1.6}
+@media(max-width:700px){.grid{grid-template-columns:1fr}h1{font-size:28px}}
 </style>
 </head>
 <body>
 <header>
-<div class="logo">ASTRA</div>
-<div class="status">● SECURITY SYSTEM ONLINE</div>
+ <div class="logo">ASTRA</div>
+ <div id="modelStatus">AI MODEL: LOADING</div>
 </header>
 <main>
-<h1>AI Farm Security Dashboard</h1>
-<p class="sub">Autonomous intrusion monitoring and wildlife-friendly farm protection.</p>
+<h1>AI Farm Security</h1>
+<p>Upload a farm image. ASTRA analyzes it and highlights objects recognized by the AI model.</p>
 
-<section class="cards">
-<div class="card"><div class="label">SYSTEM STATUS</div><div class="value green" id="system">READY</div></div>
-<div class="card"><div class="label">CAMERA STATUS</div><div class="value" id="camStatus">NOT CONNECTED</div></div>
-<div class="card"><div class="label">DETECTIONS</div><div class="value" id="count">0</div></div>
-<div class="card"><div class="label">ACTIVE ZONE</div><div class="value">ZONE A1</div></div>
+<div class="grid">
+<section class="panel">
+<h2>Image Detection</h2>
+<p>Select an image from your computer or phone.</p>
+<label class="upload">Upload Image
+<input id="file" type="file" accept="image/*" hidden>
+</label>
+<div id="preview">
+<img id="photo" alt="Selected image">
+<canvas id="boxes"></canvas>
+</div>
+<br>
+<button id="analyze" disabled>Analyze with AI</button>
+<button class="secondary" id="clear">Clear Image</button>
+<div class="status" id="status">Loading AI model. Please wait...</div>
 </section>
 
-<div class="layout">
 <section class="panel">
-<h2>Live Camera Feed</h2>
-<p class="sub">Allow camera access to view your surroundings.</p>
-<video id="camera" autoplay playsinline muted></video>
-<button class="primary" onclick="startCamera()">Start Camera</button>
-<button class="secondary" onclick="stopCamera()">Stop Camera</button>
-<div id="camMessage" class="sub">Camera has not started.</div>
-</section>
-
-<section class="panel">
-<h2>Intrusion Detection</h2>
-<p class="sub">This starter version displays camera video but does not yet classify people or animals.</p>
-<div id="result">Waiting for a detection model.</div>
-<button class="primary" onclick="demoDetection()">Run Sample Alert</button>
-<button class="secondary" onclick="resetDetection()">Reset</button>
-<h3>Recent Events</h3>
-<ul id="events"><li>No events recorded.</li></ul>
+<h2>Detection Report</h2>
+<div class="stat"><small>OBJECTS DETECTED</small><strong id="count">—</strong></div>
+<div class="stat"><small>PEOPLE</small><strong id="people">—</strong></div>
+<div class="stat"><small>SUPPORTED ANIMALS</small><strong id="animals">—</strong></div>
+<h3>AI Results</h3>
+<ul id="results"><li>Upload an image to start.</li></ul>
+<p class="note">This pretrained model recognizes only its supported categories. It may not recognize wild boars or every farm animal.</p>
 </section>
 </div>
-
-<section class="panel" style="margin-top:18px">
-<h2>ASTRA Protection Network</h2>
-<p class="sub">1. Camera captures a scene → 2. AI model identifies a person or animal → 3. Zone alert is generated → 4. Farmer receives a notification.</p>
-<p class="yellow">Prototype status: camera preview available; AI detection and real mobile alerts require further integration.</p>
-</section>
 </main>
-<footer>ASTRA • Intelligent Farm Protection • Prototype Dashboard</footer>
-
 <script>
-let stream=null, detections=0;
-async function startCamera(){
-  const message=document.getElementById('camMessage');
-  if(!navigator.mediaDevices?.getUserMedia){
-    message.textContent='Camera access needs HTTPS or localhost in a supported browser.';
-    return;
-  }
-  try{
-    stream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
-    document.getElementById('camera').srcObject=stream;
-    document.getElementById('camStatus').textContent='CONNECTED';
-    document.getElementById('system').textContent='CAMERA READY';
-    message.textContent='Camera connected. AI classification is not enabled yet.';
-  }catch(e){
-    message.textContent='Camera unavailable or permission denied. Allow camera access and try again.';
-  }
+const file=document.getElementById('file');
+const photo=document.getElementById('photo');
+const canvas=document.getElementById('boxes');
+const ctx=canvas.getContext('2d');
+const statusBox=document.getElementById('status');
+const analyze=document.getElementById('analyze');
+let model=null, imageURL=null;
+
+async function loadAI(){
+ try{
+  statusBox.textContent='Loading AI model...';
+  model=await cocoSsd.load();
+  document.getElementById('modelStatus').textContent='AI MODEL: READY';
+  statusBox.textContent='AI ready. Upload an image to begin.';
+  analyze.disabled=!imageURL;
+ }catch(e){
+  document.getElementById('modelStatus').textContent='MODEL OFFLINE';
+  statusBox.textContent='Model could not load. Check internet and refresh.';
+ }
 }
-function stopCamera(){
-  if(stream)stream.getTracks().forEach(track=>track.stop());
-  stream=null;
-  document.getElementById('camera').srcObject=null;
-  document.getElementById('camStatus').textContent='NOT CONNECTED';
-  document.getElementById('camMessage').textContent='Camera stopped.';
-}
-function demoDetection(){
-  detections++;
-  document.getElementById('count').textContent=detections;
-  document.getElementById('result').innerHTML=
-    '<span class="yellow">SAMPLE EVENT — NOT A REAL AI DETECTION</span><br>Example category: Person<br>Zone: A1<br>Status: Review required';
-  const list=document.getElementById('events');
-  if(detections===1)list.innerHTML='';
-  const item=document.createElement('li');
-  item.textContent=new Date().toLocaleTimeString()+' — Sample event in Zone A1';
-  list.prepend(item);
-}
-function resetDetection(){
-  detections=0;
-  document.getElementById('count').textContent='0';
-  document.getElementById('result').textContent='Waiting for a detection model.';
-  document.getElementById('events').innerHTML='<li>No events recorded.</li>';
-}
+file.addEventListener('change',()=>{
+ const f=file.files[0];
+ if(!f)return;
+ if(imageURL)URL.revokeObjectURL(imageURL);
+ imageURL=URL.createObjectURL(f);
+ photo.onload=()=>{
+  document.getElementById('preview').style.display='block';
+  canvas.width=photo.naturalWidth;
+  canvas.height=photo.naturalHeight;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  analyze.disabled=!model;
+  statusBox.textContent='Image ready. Click Analyze with AI.';
+  document.getElementById('count').textContent='—';
+  document.getElementById('people').textContent='—';
+  document.getElementById('animals').textContent='—';
+  document.getElementById('results').innerHTML='<li>Ready to analyze.</li>';
+ };
+ photo.src=imageURL;
+});
+analyze.addEventListener('click',async()=>{
+ if(!model||!photo.naturalWidth)return;
+ analyze.disabled=true;
+ statusBox.textContent='AI analyzing image...';
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ try{
+  const predictions=await model.detect(photo);
+  const animalNames=['bird','cat','dog','horse','sheep','cow','elephant','bear','zebra','giraffe'];
+  predictions.forEach(p=>{
+   const [x,y,w,h]=p.bbox;
+   ctx.strokeStyle=p.class==='person'?'#35ff9c':'#ffc857';
+   ctx.lineWidth=Math.max(3,canvas.width/250);
+   ctx.strokeRect(x,y,w,h);
+   const label=p.class+' '+(p.score*100).toFixed(1)+'%';
+   const fs=Math.max(14,canvas.width/55);
+   ctx.font='bold '+fs+'px Arial';
+   const ly=Math.max(fs+8,y);
+   ctx.fillStyle=p.class==='person'?'#087c4c':'#986000';
+   ctx.fillRect(x,ly-fs-8,ctx.measureText(label).width+12,fs+12);
+   ctx.fillStyle='#fff';
+   ctx.fillText(label,x+6,ly);
+  });
+  document.getElementById('count').textContent=predictions.length;
+  document.getElementById('people').textContent=predictions.filter(p=>p.class==='person').length;
+  document.getElementById('animals').textContent=predictions.filter(p=>animalNames.includes(p.class)).length;
+  const list=document.getElementById('results');
+  list.innerHTML='';
+  if(!predictions.length)list.innerHTML='<li>No supported objects detected.</li>';
+  predictions.forEach(p=>{
+   const li=document.createElement('li');
+   li.textContent=p.class+' — '+(p.score*100).toFixed(1)+'% confidence';
+   list.appendChild(li);
+  });
+  statusBox.textContent='Analysis complete. Results are from the pretrained AI model.';
+ }catch(e){statusBox.textContent='Analysis failed. Try another image or refresh.';}
+ finally{analyze.disabled=!model;}
+});
+document.getElementById('clear').addEventListener('click',()=>{
+ if(imageURL)URL.revokeObjectURL(imageURL);
+ imageURL=null;file.value='';photo.removeAttribute('src');
+ document.getElementById('preview').style.display='none';
+ ctx.clearRect(0,0,canvas.width,canvas.height);
+ analyze.disabled=true;
+ document.getElementById('count').textContent='—';
+ document.getElementById('people').textContent='—';
+ document.getElementById('animals').textContent='—';
+ document.getElementById('results').innerHTML='<li>Upload an image to start.</li>';
+ statusBox.textContent=model?'AI ready. Upload an image.':'Waiting for model...';
+});
+loadAI();
 </script>
 </body>
 </html>
